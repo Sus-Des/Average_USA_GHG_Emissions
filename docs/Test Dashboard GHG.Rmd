@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Industrial Emmissions Tracked by The EPA's GHGRP"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -7,13 +7,12 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-library(plotly)
-library(flexdashboard)
 library(ggplot2)
 library(tibble)
 library(tidyverse)
 library(readr)
 library(leaflet)
+library(plotly)
 library(spData)
 library(ozmaps)
 library(maps)
@@ -27,43 +26,228 @@ library(sf)
 library(tmap)
 library(shinyjs)
 library(flexdashboard)
+library(usethis)
+
+#get data from: https://www.epa.gov/ghgreporting/archive-ghg-reporting-program-data-sets
+
+setwd("~/Verdis Group/GHG/Direct Emiters")
+ghg2010 <- read_csv("ghgp_data_2010.csv" ,skip = 3)
+ghg2011 <- read_csv("ghgp_data_2011.csv" ,skip = 3)
+ghg2012 <- read_csv("ghgp_data_2012.csv" ,skip = 3)
+ghg2013 <- read_csv("ghgp_data_2013.csv" ,skip = 3)
+ghg2014 <- read_csv("ghgp_data_2014.csv" ,skip = 3)
+ghg2015 <- read_csv("ghgp_data_2015.csv" ,skip = 3)
+ghg2016 <- read_csv("ghgp_data_2016.csv" ,skip = 3)
+ghg2017 <- read_csv("ghgp_data_2017.csv" ,skip = 3)
+ghg2018 <- read_csv("ghgp_data_2018.csv" ,skip = 3)
+ghg2019 <- read_csv("ghgp_data_2019.csv" ,skip = 3)
+
+
+## Clean
+EPA_GHG <- bind_rows(ghg2019,ghg2018,ghg2017,ghg2016,ghg2015,ghg2014,ghg2013,ghg2012,ghg2011,ghg2010, .id = NULL)
+names(EPA_GHG)
+summary(EPA_GHG)
+max(EPA_GHG$`Methane (CH4) emissions`, na.rm = TRUE)
+unique(EPA_GHG$`Industry Type (sectors)`)
+
+
+#ONLY the big 3 GHG
+BIG_3 <- subset(EPA_GHG[,c(1:17, 26,67)])
+
+carbon_per_ind <- BIG_3 %>%
+  group_by(`Industry Type (sectors)`) %>%
+  summarise(avg_carbon = mean(`CO2 emissions (non-biogenic)` +
+                                `Biogenic CO2 emissions (metric tons)`, na.rm = TRUE))
+
+
+
+methane_per_ind <- BIG_3 %>%
+  group_by(`Industry Type (sectors)`) %>%
+  summarise(avg_methane = mean(`Methane (CH4) emissions`))
+
+N2O_per_ind <- BIG_3 %>%
+  group_by(`Industry Type (sectors)`) %>%
+  summarise(avg_N2O = mean(`Nitrous Oxide (N2O) emissions`))
+
+direct_CO2e <- BIG_3 %>%
+  group_by(`Industry Type (sectors)`) %>%
+  summarise(avg_direct = mean(`Total reported direct emissions`))
+
+em_per_industry <-Reduce(function(x, y) merge(x, y, all=TRUE), list(direct_CO2e, carbon_per_ind,methane_per_ind, N2O_per_ind))
+
+
+
+#Isolate by industry
+Paper <- subset(EPA_GHG, subset =EPA_GHG$`Industry Type (sectors)`=="Pulp and Paper")
+summary(Paper$`CO2 emissions (non-biogenic)`)
+
+#Emissions by state
+USA_Emissions_State <- EPA_GHG %>% 
+  group_by(`State`) %>%
+  summarise(across(c(`Total reported direct emissions`,
+                     `CO2 emissions (non-biogenic)`,
+                     `Methane (CH4) emissions`,
+                     `Nitrous Oxide (N2O) emissions`,
+                     `Biogenic CO2 emissions (metric tons)`), ~ mean(.x, na.rm = TRUE)))
+
+USA_Emissions_State$CO2_Emissions <- USA_Emissions_State$`CO2 emissions (non-biogenic)` + 
+  USA_Emissions_State$`Biogenic CO2 emissions (metric tons)`
+
+#Emissions by year
+USA_Emissions_Date <- EPA_GHG %>% 
+  group_by(`Date`) %>%
+  summarise(across(c(`Total reported direct emissions`,
+                     `CO2 emissions (non-biogenic)`,
+                     `Methane (CH4) emissions`,
+                     `Nitrous Oxide (N2O) emissions`,
+                     `Biogenic CO2 emissions (metric tons)`), ~ sum(.x, na.rm = TRUE)))
+
+USA_Emissions_Date$CO2_Emissions <- USA_Emissions_Date$`CO2 emissions (non-biogenic)` + 
+  USA_Emissions_Date$`Biogenic CO2 emissions (metric tons)`
+
+##Merge state data
+States <- spData::us_states
+
+State_abbs <- as.data.frame(state.abb)
+State_abbs$NAME <- state.name
+colnames(State_abbs) <- c("State", "NAME")
+USA_Emissions_State <- merge(x = USA_Emissions_State, y = State_abbs, by = "State", copy = TRUE)
+USA_Emissions_State <- merge(x = USA_Emissions_State, y = States, by = "NAME", copy = TRUE)
+
+
+############# General plot
+# Total reported Emissions
+USA_Emissions_State$Total_Emissions = USA_Emissions_State$`CO2 emissions (non-biogenic)`+
+                      USA_Emissions_State$`Methane (CH4) emissions`+
+                      USA_Emissions_State$`Nitrous Oxide (N2O) emissions`
+state_emissions <- ggplot(USA_Emissions_State, aes(fct_reorder(State, `Total reported direct emissions`),
+                                                   `Total reported direct emissions`,
+                                                   color = State,
+                                                   size = 2,
+                                                   text = paste0("<b>State:", State, "<br>",
+                                                                 "<b> Reported emissions CO2e:",sprintf("%0.2f", round( `Total reported direct emissions`, digits = 2)),"<br>",
+                                                                 "<b> Carbon:",sprintf("%0.2f", round( (`CO2 emissions (non-biogenic)`/Total_Emissions)*100, digits = 2)), "%","<br>",
+                                                                 "<b> Methane:",sprintf("%0.2f", round( (`Methane (CH4) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>",
+                                                                 "<b> Nitrous Oxide:",sprintf("%0.2f", round( (`Nitrous Oxide (N2O) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>")))+
+  geom_point()+
+  coord_flip()+
+  labs(y = "Reported Emisions (CO2e)", x = "State", title = "Total Reported Direct Emissions CO2e")
+
+
+
+
+ggplotly(state_emissions, tooltip = "text")
+
+
+############# maps
+#Emissions per area
+
+USA_Emissions_State$Total_Emm_Per_km <- USA_Emissions_State$`Total reported direct emissions`/USA_Emissions_State$AREA
+USA_Emissions_State$Carbon_Emm_Per_km <- USA_Emissions_State$`CO2 emissions (non-biogenic)`/USA_Emissions_State$AREA
+USA_Emissions_State$Methane_Emm_Per_km <- USA_Emissions_State$`Methane (CH4) emissions`/USA_Emissions_State$AREA
+USA_Emissions_State$NitrousO_Emm_Per_km <- USA_Emissions_State$`Nitrous Oxide (N2O) emissions`/USA_Emissions_State$AREA
+
+
+## Working Leaflet map
+class(geometry)
+
+geometry
+
+USA_Emissions_State <- st_as_sf(USA_Emissions_State)
+class(USA_Emissions_State)
+
+#Carbon
+Carbon_map <- tm_shape(USA_Emissions_State, unit = "km")+
+  tm_polygons(col = "CO2 emissions (non-biogenic)",
+              palette="Reds",
+              style = "sd",
+              contrast=.3000,
+               title="Metrics Tons of Carbon Dioxide Emissions (CO2e)")
+Carbon_map
+
+tmap_leaflet(Carbon_map)%>%
+  addTiles() 
+
+#Methane
+Methane_map <- tm_shape(USA_Emissions_State, unit = "km")+
+  tm_polygons(col = "Methane (CH4) emissions",
+              palette="Greens",
+              style = "sd",
+              contrast=.3000,
+              title="Metric Tons of Methane Emissions (CO2e)")
+Methane_map
+
+tmap_leaflet(Methane_map)%>%
+  addTiles()
+
+#Nitrous Oxide
+Nitrous_map <- tm_shape(USA_Emissions_State, unit = "km")+
+  tm_polygons(col = "Nitrous Oxide (N2O) emissions",
+              palette="Blues",
+              style = "sd",
+              contrast=.3000,
+              title="Metric Tons of Nitrous Oxide Emissions (CO2e)")
+Nitrous_map
+
+N2O<- tmap_leaflet(Nitrous_map)%>%
+  addTiles()
+
+
+options(scipen = 100)
+summary(USA_Emissions_State$`Total reported direct emissions`)
+
+
 ```
 
-Column {data-width=650}
+Column {data-width=1000,}
 -----------------------------------------------------------------------
+Totals Graph
+===
 
-### Chart A
 
-```{r}
+### States Ranked by Average Annual Industrial GHG Emissions
 
-renderPlotly({
+```{r,}
+
+
   state_emissions %>%
 ggplotly(., tooltip = "text")
-})
 
 
 ```
 
-Column {data-width=350}
+
+Maps
+===
+Column {data-width=650, .tabset}
 -----------------------------------------------------------------------
 
-### Chart B
+
+### Carbon Dioxide (CO2)
 
 ```{r}
+
+tmap_leaflet(Carbon_map)%>%
+  addTiles() 
 
 ```
 
-### Chart C
+
+### Methane (CH4)
 
 ```{r}
+
+tmap_leaflet(Methane_map)%>%
+  addTiles()
 
 ```
 
 
-### Chart D
+### Nitrous Oxide (N20)
 
 ```{r}
 
-
+tmap_leaflet(Nitrous_map)%>%
+  addTiles()
 
 ```
