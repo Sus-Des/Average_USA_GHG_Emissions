@@ -1,0 +1,69 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(plotly)
+library(flexdashboard)
+library(ggplot2)
+library(tibble)
+library(tidyverse)
+library(readr)
+library(leaflet)
+library(spData)
+library(ozmaps)
+library(maps)
+library(mapproj)
+library(dplyr)
+library(sfc)
+library(maptools)
+library(rgdal)
+library(sp)
+library(sf)
+library(tmap)
+library(shinyjs)
+library(flexdashboard)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+renderPlotly({
+  state_emissions %>%
+ggplotly(., tooltip = "text")
+})
+
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
+
+### Chart D
+
+```{r}
+
+
+
+```
