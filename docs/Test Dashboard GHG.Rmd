@@ -4,7 +4,6 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -115,7 +114,6 @@ colnames(State_abbs) <- c("State", "NAME")
 USA_Emissions_State <- merge(x = USA_Emissions_State, y = State_abbs, by = "State", copy = TRUE)
 USA_Emissions_State <- merge(x = USA_Emissions_State, y = States, by = "NAME", copy = TRUE)
 
-
 ############# General plot
 # Total reported Emissions
 USA_Emissions_State$Total_Emissions <-  format(USA_Emissions_State$`Total reported direct emissions`, big.mark = ",", scientific = FALSE) 
@@ -217,7 +215,6 @@ sum(ghg2019$`Total reported direct emissions`, na.rm = TRUE)/(6558*(10^6)) #= 40
 #### Findings
 
 options()
-
 
 ```
 
