@@ -177,7 +177,6 @@ Methane_map <- tm_shape(USA_Emissions_State, unit = "km")+
               style = "sd",
               contrast=.3000,
               title="Metric Tonnes of Methane (CO2e)")
-
 Methane_map
 
 tmap_leaflet(Methane_map)%>%
