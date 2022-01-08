@@ -118,6 +118,8 @@ USA_Emissions_State <- merge(x = USA_Emissions_State, y = States, by = "NAME", c
 
 ############# General plot
 # Total reported Emissions
+USA_Emissions_State$Total_Emissions <-  format(USA_Emissions_State$`Total reported direct emissions`, big.mark = ",", scientific = FALSE) 
+
 USA_Emissions_State$Total_Emissions = USA_Emissions_State$`CO2 emissions (non-biogenic)`+
                       USA_Emissions_State$`Methane (CH4) emissions`+
                       USA_Emissions_State$`Nitrous Oxide (N2O) emissions`
@@ -125,14 +127,14 @@ state_emissions <- ggplot(USA_Emissions_State, aes(fct_reorder(State, `Total rep
                                                    `Total reported direct emissions`,
                                                    color = State,
                                                    text = paste0("<b>State:", State, "<br>",
-                                                                 "<b> Total repoted direct emissions:",sprintf("%0.2f", round( `Total reported direct emissions`, digits = 2)),"<br>",
-                                                                 "<b> Carbon:",sprintf("%0.2f", round( (`CO2 emissions (non-biogenic)`/Total_Emissions)*100, digits = 2)), "%","<br>",
-                                                                 "<b> Methane:",sprintf("%0.2f", round( (`Methane (CH4) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>",
-                                                                 "<b> Nitrous Oxide:",sprintf("%0.2f", round( (`Nitrous Oxide (N2O) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>")))+
+                                                                 "<b> Total repoted direct emissions:",  format(USA_Emissions_State$`Total reported direct emissions`, big.mark=","),"<br>",
+                                                                 "<b> Carbon:",sprintf("%10.2f", round( (`CO2 emissions (non-biogenic)`/Total_Emissions)*100, digits = 2)), "%","<br>",
+                                                                 "<b> Methane:",sprintf("%10.2f", round( (`Methane (CH4) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>",
+                                                                 "<b> Nitrous Oxide:",sprintf("%10.2f", round( (`Nitrous Oxide (N2O) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>")))+
   geom_point()+
   coord_flip()+
-  labs(y = "GHG Emissions in CO2e", x = "State", title = "Total Reported Direct Emissions")
-
+  labs(y = "GHG Emissions in CO2e", x = "State", title = "Total Reported Direct Emissions")+
+  scale_y_continuous(labels = scales::comma)
 
 
 
