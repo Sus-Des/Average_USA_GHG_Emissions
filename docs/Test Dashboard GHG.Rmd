@@ -130,7 +130,7 @@ state_emissions <- ggplot(USA_Emissions_State, aes(fct_reorder(State, `Total rep
                                                                  "<b> Nitrous Oxide:",sprintf("%0.2f", round( (`Nitrous Oxide (N2O) emissions`/Total_Emissions)*100, digits = 2)), "%","<br>")))+
   geom_point()+
   coord_flip()+
-  labs(y = "GHG Emissios in CO2e", x = "State", title = "Total Reported Direct Emissions")
+  labs(y = "GHG Emissions in CO2e", x = "State", title = "Total Reported Direct Emissions")
 
 
 
